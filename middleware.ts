@@ -17,15 +17,43 @@ function verifyBasicAuth(request: NextRequest): boolean {
   return username === ADMIN_USERNAME && password === ADMIN_PASSWORD;
 }
 
+function verifySessionCookie(request: NextRequest): boolean {
+  const sessionCookie = request.cookies.get('admin_session');
+  return sessionCookie?.value === 'authenticated';
+}
+
 export function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
-  // Protect /admin and admin-related API routes
-  const protectedPaths = ['/admin', '/api/upload', '/api/pdfs'];
-  const isProtected = protectedPaths.some((path) => pathname.startsWith(path));
+  // Allow auth API routes without authentication
+  if (pathname.startsWith('/api/auth')) {
+    return NextResponse.next();
+  }
 
-  if (isProtected) {
-    if (!verifyBasicAuth(request)) {
+  // Allow login page without authentication
+  if (pathname === '/admin/login') {
+    // If already authenticated, redirect to admin
+    if (verifySessionCookie(request)) {
+      return NextResponse.redirect(new URL('/admin', request.url));
+    }
+    return NextResponse.next();
+  }
+
+  // Protect /admin pages with cookie-based session
+  if (pathname.startsWith('/admin')) {
+    if (!verifySessionCookie(request)) {
+      return NextResponse.redirect(new URL('/admin/login', request.url));
+    }
+    return NextResponse.next();
+  }
+
+  // Protect API routes with basic auth (for programmatic access)
+  const protectedApiPaths = ['/api/upload', '/api/pdfs'];
+  const isProtectedApi = protectedApiPaths.some((path) => pathname.startsWith(path));
+
+  if (isProtectedApi) {
+    // Also allow cookie-based auth for API calls from the admin panel
+    if (!verifyBasicAuth(request) && !verifySessionCookie(request)) {
       return new NextResponse('Authentication required', {
         status: 401,
         headers: {
@@ -39,5 +67,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/admin/:path*', '/api/upload/:path*', '/api/pdfs/:path*'],
+  matcher: ['/admin/:path*', '/api/upload/:path*', '/api/pdfs/:path*', '/api/auth/:path*'],
 };

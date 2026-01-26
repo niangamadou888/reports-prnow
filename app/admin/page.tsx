@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 
 interface PDFRecord {
   slug: string;
@@ -27,6 +28,7 @@ function formatDate(dateString: string): string {
 }
 
 export default function AdminPage() {
+  const router = useRouter();
   const [pdfs, setPdfs] = useState<PDFRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState<string | null>(null);
@@ -34,6 +36,11 @@ export default function AdminPage() {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadedUrl, setUploadedUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const handleLogout = async () => {
+    await fetch('/api/auth/logout', { method: 'POST' });
+    router.push('/admin/login');
+  };
 
   const fetchPdfs = async () => {
     try {
@@ -147,8 +154,14 @@ export default function AdminPage() {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <header className="bg-white border-b border-gray-200 px-6 py-4">
-        <div className="max-w-6xl mx-auto">
+        <div className="max-w-6xl mx-auto flex items-center justify-between">
           <h1 className="text-xl font-semibold text-gray-900">PR Now Reports - Admin</h1>
+          <button
+            onClick={handleLogout}
+            className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+          >
+            Logout
+          </button>
         </div>
       </header>
 
