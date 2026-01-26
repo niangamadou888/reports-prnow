@@ -11,32 +11,31 @@ export interface PDFRecord {
 
 const PDF_LIST_KEY = 'pdf_records';
 
-// Generate a random slug (6 characters, alphanumeric)
-export function generateSlug(): string {
-  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
-  let slug = '';
-  for (let i = 0; i < 6; i++) {
-    slug += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return slug;
+// Convert filename to URL-friendly slug
+export function filenameToSlug(filename: string): string {
+  return filename
+    .replace(/\.pdf$/i, '') // Remove .pdf extension
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9\s-]/g, '') // Remove special characters
+    .replace(/\s+/g, '-') // Replace spaces with hyphens
+    .replace(/-+/g, '-') // Replace multiple hyphens with single
+    .replace(/^-|-$/g, '') // Remove leading/trailing hyphens
+    .substring(0, 50); // Limit length
 }
 
-// Generate unique slug (check for duplicates)
-export async function generateUniqueSlug(): Promise<string> {
+// Generate unique slug from filename (check for duplicates)
+export async function generateUniqueSlug(filename: string): Promise<string> {
   const records = await getAllPDFs();
   const existingSlugs = new Set(records.map(r => r.slug));
 
-  let slug = generateSlug();
-  let attempts = 0;
+  const baseSlug = filenameToSlug(filename) || 'document';
+  let slug = baseSlug;
+  let counter = 2;
 
-  while (existingSlugs.has(slug) && attempts < 100) {
-    slug = generateSlug();
-    attempts++;
-  }
-
-  if (attempts >= 100) {
-    // Fallback to longer slug
-    slug = generateSlug() + generateSlug();
+  while (existingSlugs.has(slug)) {
+    slug = `${baseSlug}-${counter}`;
+    counter++;
   }
 
   return slug;

@@ -22,8 +22,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generate unique slug
-    const slug = await generateUniqueSlug();
+    // Generate unique slug from filename
+    const slug = await generateUniqueSlug(file.name);
 
     // Upload to Vercel Blob
     const blob = await put(`pdfs/${slug}.pdf`, file, {
