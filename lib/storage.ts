@@ -1,5 +1,3 @@
-import path from 'path';
-import fs from 'fs/promises';
 import { getPool, ensureSchema } from './db';
 import { RowDataPacket } from 'mysql2';
 
@@ -13,8 +11,6 @@ export interface PDFRecord {
   filePath: string;
   fileType?: FileType;
 }
-
-const UPLOAD_DIR = path.join(process.cwd(), 'uploads');
 
 const EXCEL_MIME_TYPES = [
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
@@ -80,24 +76,17 @@ export async function generateUniqueSlug(filename: string): Promise<string> {
 export async function saveFile(file: File, slug: string, fileType: FileType): Promise<string> {
   const folder = fileType === 'pdf' ? 'pdfs' : 'excel';
   const ext = getFileExtension(file) || (fileType === 'pdf' ? '.pdf' : '.xlsx');
-  const dir = path.join(UPLOAD_DIR, folder);
 
-  await fs.mkdir(dir, { recursive: true });
-
-  const filePath = path.join(dir, `${slug}${ext}`);
-  const buffer = Buffer.from(await file.arrayBuffer());
-  await fs.writeFile(filePath, buffer);
-
-  // Return relative path from uploads dir
+  // Return a virtual path (used as identifier, not on disk)
   return `${folder}/${slug}${ext}`;
 }
 
-export async function addPDF(record: PDFRecord): Promise<void> {
+export async function addPDF(record: PDFRecord & { fileData?: Buffer }): Promise<void> {
   await ensureSchema();
   const db = getPool();
   await db.execute(
-    'INSERT INTO pdf_records (slug, original_name, uploaded_at, file_size, file_path, file_type) VALUES (?, ?, ?, ?, ?, ?)',
-    [record.slug, record.originalName, record.uploadedAt, record.fileSize, record.filePath, record.fileType || 'pdf']
+    'INSERT INTO pdf_records (slug, original_name, uploaded_at, file_size, file_path, file_type, file_data) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    [record.slug, record.originalName, record.uploadedAt, record.fileSize, record.filePath, record.fileType || 'pdf', record.fileData || null]
   );
 }
 
@@ -136,22 +125,23 @@ export async function getPDF(slug: string): Promise<PDFRecord | undefined> {
   };
 }
 
+export async function getFileData(slug: string): Promise<Buffer | null> {
+  await ensureSchema();
+  const db = getPool();
+  const [rows] = await db.execute<RowDataPacket[]>(
+    'SELECT file_data FROM pdf_records WHERE slug = ? LIMIT 1',
+    [slug]
+  );
+  if (rows.length === 0 || !rows[0].file_data) return null;
+  return rows[0].file_data as Buffer;
+}
+
 export async function deletePDF(slug: string): Promise<boolean> {
   await ensureSchema();
   const db = getPool();
 
   const pdf = await getPDF(slug);
   if (!pdf) return false;
-
-  // Delete the file from disk
-  if (pdf.filePath) {
-    try {
-      const fullPath = path.join(UPLOAD_DIR, pdf.filePath);
-      await fs.unlink(fullPath);
-    } catch (error) {
-      console.error('Error deleting file from disk:', error);
-    }
-  }
 
   // Remove from database
   await db.execute('DELETE FROM pdf_records WHERE slug = ?', [slug]);

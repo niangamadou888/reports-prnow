@@ -1,18 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import path from 'path';
-import fs from 'fs/promises';
-import { deletePDF, getPDF } from '@/lib/storage';
-
-const UPLOAD_DIR = path.join(process.cwd(), 'uploads');
+import { deletePDF, getPDF, getFileData } from '@/lib/storage';
 
 function getContentType(filePath: string): string {
-  const ext = path.extname(filePath).toLowerCase();
-  switch (ext) {
-    case '.pdf': return 'application/pdf';
-    case '.xlsx': return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
-    case '.xls': return 'application/vnd.ms-excel';
-    default: return 'application/octet-stream';
-  }
+  const lower = filePath.toLowerCase();
+  if (lower.endsWith('.pdf')) return 'application/pdf';
+  if (lower.endsWith('.xlsx')) return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+  if (lower.endsWith('.xls')) return 'application/vnd.ms-excel';
+  return 'application/octet-stream';
 }
 
 export async function GET(
@@ -30,11 +24,17 @@ export async function GET(
       );
     }
 
-    const fullPath = path.join(UPLOAD_DIR, pdf.filePath);
-    const fileBuffer = await fs.readFile(fullPath);
+    const fileBuffer = await getFileData(slug);
+    if (!fileBuffer) {
+      return NextResponse.json(
+        { error: 'File data not found' },
+        { status: 404 }
+      );
+    }
+
     const contentType = getContentType(pdf.filePath);
 
-    return new NextResponse(fileBuffer, {
+    return new NextResponse(new Uint8Array(fileBuffer), {
       headers: {
         'Content-Type': contentType,
         'Content-Disposition': `inline; filename="${pdf.originalName}"`,

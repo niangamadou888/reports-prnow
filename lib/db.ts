@@ -30,8 +30,15 @@ export async function ensureSchema(): Promise<void> {
       uploaded_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
       file_size BIGINT NOT NULL DEFAULT 0,
       file_path VARCHAR(1000) NOT NULL,
-      file_type ENUM('pdf', 'excel') NOT NULL DEFAULT 'pdf'
+      file_type ENUM('pdf', 'excel') NOT NULL DEFAULT 'pdf',
+      file_data LONGBLOB
     )
   `);
+  // Add file_data column if table already exists without it
+  try {
+    await db.execute(`ALTER TABLE pdf_records ADD COLUMN file_data LONGBLOB`);
+  } catch {
+    // Column already exists, ignore
+  }
   initialized = true;
 }

@@ -29,10 +29,11 @@ export async function POST(request: NextRequest) {
     // Generate unique slug from filename
     const slug = await generateUniqueSlug(file.name);
 
-    // Save file to local disk
+    // Generate virtual file path identifier
     const filePath = await saveFile(file, slug, fileType);
 
-    // Add record to MySQL
+    // Read file data and store in MySQL
+    const fileData = Buffer.from(await file.arrayBuffer());
     await addPDF({
       slug,
       originalName: file.name,
@@ -40,6 +41,7 @@ export async function POST(request: NextRequest) {
       fileSize: file.size,
       filePath,
       fileType,
+      fileData,
     });
 
     return NextResponse.json({
