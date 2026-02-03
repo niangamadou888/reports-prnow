@@ -1,5 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
+import path from 'path';
+import fs from 'fs/promises';
 import { deletePDF, getPDF } from '@/lib/storage';
+
+const UPLOAD_DIR = path.join(process.cwd(), 'uploads');
+
+function getContentType(filePath: string): string {
+  const ext = path.extname(filePath).toLowerCase();
+  switch (ext) {
+    case '.pdf': return 'application/pdf';
+    case '.xlsx': return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+    case '.xls': return 'application/vnd.ms-excel';
+    default: return 'application/octet-stream';
+  }
+}
 
 export async function GET(
   request: NextRequest,
@@ -16,8 +30,16 @@ export async function GET(
       );
     }
 
-    // Redirect to the Vercel Blob URL
-    return NextResponse.redirect(pdf.blobUrl);
+    const fullPath = path.join(UPLOAD_DIR, pdf.filePath);
+    const fileBuffer = await fs.readFile(fullPath);
+    const contentType = getContentType(pdf.filePath);
+
+    return new NextResponse(fileBuffer, {
+      headers: {
+        'Content-Type': contentType,
+        'Content-Disposition': `inline; filename="${pdf.originalName}"`,
+      },
+    });
   } catch (error) {
     console.error('Error serving PDF:', error);
     return NextResponse.json(

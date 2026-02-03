@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { put } from '@vercel/blob';
-import { generateUniqueSlug, addPDF } from '@/lib/storage';
+import { generateUniqueSlug, addPDF, saveFile, isPDFFile, isExcelFile, FileType } from '@/lib/storage';
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,36 +13,40 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate file type
-    if (file.type !== 'application/pdf') {
+    // Validate file type - allow PDF and Excel
+    const isPdf = isPDFFile(file);
+    const isExcel = isExcelFile(file);
+
+    if (!isPdf && !isExcel) {
       return NextResponse.json(
-        { error: 'Only PDF files are allowed' },
+        { error: 'Only PDF and Excel (.xlsx, .xls) files are allowed' },
         { status: 400 }
       );
     }
 
+    const fileType: FileType = isPdf ? 'pdf' : 'excel';
+
     // Generate unique slug from filename
     const slug = await generateUniqueSlug(file.name);
 
-    // Upload to Vercel Blob
-    const blob = await put(`pdfs/${slug}.pdf`, file, {
-      access: 'public',
-      contentType: 'application/pdf',
-    });
+    // Save file to local disk
+    const filePath = await saveFile(file, slug, fileType);
 
-    // Add record to KV
+    // Add record to MySQL
     await addPDF({
       slug,
       originalName: file.name,
       uploadedAt: new Date().toISOString(),
       fileSize: file.size,
-      blobUrl: blob.url,
+      filePath,
+      fileType,
     });
 
     return NextResponse.json({
       success: true,
       slug,
       url: `/${slug}`,
+      fileType,
     });
   } catch (error) {
     console.error('Upload error:', error);

@@ -8,6 +8,7 @@ interface PDFRecord {
   originalName: string;
   uploadedAt: string;
   fileSize: number;
+  fileType?: 'pdf' | 'excel';
 }
 
 function formatFileSize(bytes: number): string {
@@ -59,8 +60,17 @@ export default function AdminPage() {
   }, []);
 
   const handleUpload = async (file: File) => {
-    if (file.type !== 'application/pdf') {
-      setError('Only PDF files are allowed');
+    const allowedTypes = [
+      'application/pdf',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'application/vnd.ms-excel',
+    ];
+    const allowedExtensions = ['.pdf', '.xlsx', '.xls'];
+    const hasValidType = allowedTypes.includes(file.type);
+    const hasValidExt = allowedExtensions.some(ext => file.name.toLowerCase().endsWith(ext));
+
+    if (!hasValidType && !hasValidExt) {
+      setError('Only PDF and Excel (.xlsx, .xls) files are allowed');
       return;
     }
 
@@ -120,7 +130,7 @@ export default function AdminPage() {
   };
 
   const handleDelete = async (slug: string) => {
-    if (!confirm('Are you sure you want to delete this PDF?')) return;
+    if (!confirm('Are you sure you want to delete this report?')) return;
 
     setDeleting(slug);
     try {
@@ -169,7 +179,7 @@ export default function AdminPage() {
         <div className="max-w-6xl mx-auto space-y-6">
           {/* Upload Section */}
           <div className="bg-white rounded-lg border border-gray-200 p-6">
-            <h2 className="text-lg font-medium text-gray-900 mb-4">Upload PDF</h2>
+            <h2 className="text-lg font-medium text-gray-900 mb-4">Upload Report</h2>
             <div
               onDrop={handleDrop}
               onDragOver={handleDragOver}
@@ -200,7 +210,7 @@ export default function AdminPage() {
               </div>
 
               <p className="text-gray-700 mb-2">
-                {isUploading ? 'Uploading...' : 'Drop your PDF here'}
+                {isUploading ? 'Uploading...' : 'Drop your PDF or Excel file here'}
               </p>
               <p className="text-sm text-gray-500 mb-3">or</p>
 
@@ -210,7 +220,7 @@ export default function AdminPage() {
                 </span>
                 <input
                   type="file"
-                  accept=".pdf,application/pdf"
+                  accept=".pdf,.xlsx,.xls,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
                   onChange={handleFileSelect}
                   className="hidden"
                   disabled={isUploading}
@@ -227,7 +237,7 @@ export default function AdminPage() {
             {uploadedUrl && (
               <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
                 <p className="text-green-800 text-sm font-medium mb-2">
-                  PDF uploaded successfully!
+                  File uploaded successfully!
                 </p>
                 <div className="flex items-center gap-2">
                   <input
@@ -279,7 +289,7 @@ export default function AdminPage() {
                     d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
                   />
                 </svg>
-                <p className="text-gray-500">No PDFs uploaded yet</p>
+                <p className="text-gray-500">No reports uploaded yet</p>
               </div>
             ) : (
               <div className="overflow-hidden">
@@ -288,6 +298,9 @@ export default function AdminPage() {
                     <tr>
                       <th className="text-left px-6 py-3 text-sm font-medium text-gray-500">
                         File Name
+                      </th>
+                      <th className="text-left px-6 py-3 text-sm font-medium text-gray-500">
+                        Type
                       </th>
                       <th className="text-left px-6 py-3 text-sm font-medium text-gray-500">
                         Slug
@@ -309,6 +322,24 @@ export default function AdminPage() {
                         <td className="px-6 py-4">
                           <span className="text-sm text-gray-900 truncate block max-w-xs">
                             {pdf.originalName}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
+                            pdf.fileType === 'excel'
+                              ? 'bg-green-100 text-green-700'
+                              : 'bg-red-100 text-red-700'
+                          }`}>
+                            {pdf.fileType === 'excel' ? (
+                              <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zm-1 2l5 5h-5V4zM9.5 11.5l2 3.5-2 3.5h1.5l1.25-2.5L13.5 18.5H15l-2-3.5 2-3.5h-1.5l-1.25 2.5-1.25-2.5H9.5z"/>
+                              </svg>
+                            ) : (
+                              <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zm-1 2l5 5h-5V4zM10 19l-1.5-6h1l1 4 1-4h1L11 19h-1z"/>
+                              </svg>
+                            )}
+                            {pdf.fileType === 'excel' ? 'Excel' : 'PDF'}
                           </span>
                         </td>
                         <td className="px-6 py-4">

@@ -14,5 +14,5 @@ export default async function PDFPage({ params }: PageProps) {
     notFound();
   }
 
-  return <PDFViewer slug={slug} originalName={pdf.originalName} />;
+  return <PDFViewer slug={slug} originalName={pdf.originalName} fileType={pdf.fileType || 'pdf'} />;
 }

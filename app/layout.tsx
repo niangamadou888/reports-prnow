@@ -15,6 +15,9 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "PR Now Reports",
   description: "Secure PDF hosting for PR Now",
+  icons: {
+    icon: "/favicon.png",
+  },
   robots: {
     index: false,
     follow: false,
