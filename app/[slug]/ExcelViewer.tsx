@@ -6,6 +6,7 @@ import * as XLSX from 'xlsx';
 interface ExcelViewerProps {
   slug: string;
   originalName: string;
+  initialSheet?: string;
 }
 
 interface SheetData {
@@ -14,7 +15,7 @@ interface SheetData {
   rows: string[][];
 }
 
-export default function ExcelViewer({ slug, originalName }: ExcelViewerProps) {
+export default function ExcelViewer({ slug, originalName, initialSheet }: ExcelViewerProps) {
   const [sheets, setSheets] = useState<SheetData[]>([]);
   const [activeSheet, setActiveSheet] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -44,6 +45,23 @@ export default function ExcelViewer({ slug, originalName }: ExcelViewerProps) {
         });
 
         setSheets(parsed);
+
+        // Set initial sheet based on query parameter
+        if (initialSheet !== undefined) {
+          const sheetIndex = parseInt(initialSheet, 10);
+          if (!isNaN(sheetIndex) && sheetIndex >= 0 && sheetIndex < parsed.length) {
+            // It's a valid index
+            setActiveSheet(sheetIndex);
+          } else {
+            // Try to find by name (case-insensitive)
+            const nameIndex = parsed.findIndex(
+              (s) => s.name.toLowerCase() === initialSheet.toLowerCase()
+            );
+            if (nameIndex !== -1) {
+              setActiveSheet(nameIndex);
+            }
+          }
+        }
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Failed to load file');
       } finally {
@@ -52,7 +70,7 @@ export default function ExcelViewer({ slug, originalName }: ExcelViewerProps) {
     }
 
     loadExcel();
-  }, [slug]);
+  }, [slug, initialSheet]);
 
   if (loading) {
     return (

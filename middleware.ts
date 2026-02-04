@@ -48,6 +48,13 @@ export function middleware(request: NextRequest) {
   }
 
   // Protect API routes with basic auth (for programmatic access)
+  // Allow GET requests to /api/pdfs/[slug] for public viewing
+  const isViewingFile = pathname.match(/^\/api\/pdfs\/[^/]+$/) && request.method === 'GET';
+
+  if (isViewingFile) {
+    return NextResponse.next();
+  }
+
   const protectedApiPaths = ['/api/upload', '/api/pdfs'];
   const isProtectedApi = protectedApiPaths.some((path) => pathname.startsWith(path));
 

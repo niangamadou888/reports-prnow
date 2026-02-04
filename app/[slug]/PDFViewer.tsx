@@ -6,9 +6,10 @@ interface PDFViewerProps {
   slug: string;
   originalName: string;
   fileType: 'pdf' | 'excel';
+  initialSheet?: string;
 }
 
-export default function PDFViewer({ slug, originalName, fileType }: PDFViewerProps) {
+export default function PDFViewer({ slug, originalName, fileType, initialSheet }: PDFViewerProps) {
   const fileUrl = `/api/pdfs/${slug}`;
 
   const handleDownload = () => {
@@ -64,7 +65,7 @@ export default function PDFViewer({ slug, originalName, fileType }: PDFViewerPro
 
       <main className="flex-1 flex">
         {isExcel ? (
-          <ExcelViewer slug={slug} originalName={originalName} />
+          <ExcelViewer slug={slug} originalName={originalName} initialSheet={initialSheet} />
         ) : (
           <iframe
             src={fileUrl}

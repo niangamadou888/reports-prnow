@@ -5,6 +5,7 @@ import PDFViewer from './PDFViewer';
 
 interface PageProps {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ sheet?: string }>;
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
@@ -21,13 +22,14 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   return { title };
 }
 
-export default async function PDFPage({ params }: PageProps) {
+export default async function PDFPage({ params, searchParams }: PageProps) {
   const { slug } = await params;
+  const { sheet } = await searchParams;
   const pdf = await getPDF(slug);
 
   if (!pdf) {
     notFound();
   }
 
-  return <PDFViewer slug={slug} originalName={pdf.originalName} fileType={pdf.fileType || 'pdf'} />;
+  return <PDFViewer slug={slug} originalName={pdf.originalName} fileType={pdf.fileType || 'pdf'} initialSheet={sheet} />;
 }
