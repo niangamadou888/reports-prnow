@@ -84,10 +84,23 @@ export async function saveFile(file: File, slug: string, fileType: FileType): Pr
 export async function addPDF(record: PDFRecord & { fileData?: Buffer }): Promise<void> {
   await ensureSchema();
   const db = getPool();
-  await db.execute(
-    'INSERT INTO pdf_records (slug, original_name, uploaded_at, file_size, file_path, file_type, file_data) VALUES (?, ?, ?, ?, ?, ?, ?)',
-    [record.slug, record.originalName, record.uploadedAt, record.fileSize, record.filePath, record.fileType || 'pdf', record.fileData || null]
-  );
+  const connection = await db.getConnection();
+  try {
+    // Raise max_allowed_packet for this connection so large files (>4 MB) are accepted.
+    // Works on MySQL 5.7 (session variable). MySQL 8.0 already defaults to 64 MB, so
+    // the SET will fail with a harmless error that we can safely ignore.
+    try {
+      await connection.execute('SET SESSION max_allowed_packet = 67108864'); // 64 MB
+    } catch {
+      // ignore – MySQL 8.0+ requires GLOBAL privilege; its default (64 MB) is fine
+    }
+    await connection.execute(
+      'INSERT INTO pdf_records (slug, original_name, uploaded_at, file_size, file_path, file_type, file_data) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [record.slug, record.originalName, record.uploadedAt, record.fileSize, record.filePath, record.fileType || 'pdf', record.fileData || null]
+    );
+  } finally {
+    connection.release();
+  }
 }
 
 export async function getAllPDFs(): Promise<PDFRecord[]> {
