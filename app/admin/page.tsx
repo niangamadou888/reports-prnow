@@ -292,7 +292,7 @@ export default function AdminPage() {
                 <p className="text-gray-500">No reports uploaded yet</p>
               </div>
             ) : (
-              <div className="overflow-hidden">
+              <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead className="bg-gray-50 border-b border-gray-200">
                     <tr>
