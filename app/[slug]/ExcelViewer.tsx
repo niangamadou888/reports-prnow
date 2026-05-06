@@ -15,11 +15,16 @@ interface SheetData {
   rows: string[][];
 }
 
+function isUrl(value: string): boolean {
+  return /^https?:\/\//i.test(value.trim());
+}
+
 export default function ExcelViewer({ slug, originalName, initialSheet }: ExcelViewerProps) {
   const [sheets, setSheets] = useState<SheetData[]>([]);
   const [activeSheet, setActiveSheet] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [copiedSheet, setCopiedSheet] = useState<number | null>(null);
 
   useEffect(() => {
     async function loadExcel() {
@@ -93,6 +98,31 @@ export default function ExcelViewer({ slug, originalName, initialSheet }: ExcelV
 
   const current = sheets[activeSheet];
 
+  const findUrlColumn = (sheet: SheetData): number => {
+    for (let c = 0; c < (sheet.headers.length || (sheet.rows[0]?.length ?? 0)); c++) {
+      if (sheet.rows.some((row) => isUrl(row[c] || ''))) return c;
+    }
+    return -1;
+  };
+
+  const copySheetUrls = async (sheetIdx: number) => {
+    const sheet = sheets[sheetIdx];
+    if (!sheet) return;
+    const colIdx = findUrlColumn(sheet);
+    if (colIdx === -1) return;
+    const urls = sheet.rows
+      .map((row) => (row[colIdx] || '').trim())
+      .filter((value) => isUrl(value));
+    if (urls.length === 0) return;
+    try {
+      await navigator.clipboard.writeText(urls.join('\n'));
+      setCopiedSheet(sheetIdx);
+      setTimeout(() => setCopiedSheet((s) => (s === sheetIdx ? null : s)), 1500);
+    } catch {
+      // Clipboard write may fail in restricted contexts; ignore silently.
+    }
+  };
+
   if (!current || (current.headers.length === 0 && current.rows.length === 0)) {
     return (
       <div className="w-full flex items-center justify-center p-12">
@@ -105,20 +135,39 @@ export default function ExcelViewer({ slug, originalName, initialSheet }: ExcelV
     <div className="w-full flex flex-col overflow-hidden">
       {/* Sheet tabs */}
       {sheets.length > 1 && (
-        <div className="flex bg-gray-800 border-b border-gray-700 px-2 pt-2 gap-1 overflow-x-auto">
-          {sheets.map((sheet, i) => (
-            <button
-              key={sheet.name}
-              onClick={() => setActiveSheet(i)}
-              className={`px-4 py-2 text-sm rounded-t-md whitespace-nowrap transition-colors ${
-                i === activeSheet
-                  ? 'bg-gray-900 text-white border-t border-x border-gray-600'
-                  : 'text-gray-400 hover:text-gray-200 hover:bg-gray-700'
-              }`}
-            >
-              {sheet.name}
-            </button>
-          ))}
+        <div className="flex items-center bg-gray-800 border-b border-gray-700 px-2 pt-2 gap-1 overflow-x-auto">
+          {sheets.map((sheet, i) => {
+            const showCopy = i === 2 && findUrlColumn(sheet) !== -1;
+            const isCopied = copiedSheet === i;
+            return (
+              <div key={sheet.name} className="flex items-center gap-1">
+                <button
+                  onClick={() => setActiveSheet(i)}
+                  className={`px-4 py-2 text-sm rounded-t-md whitespace-nowrap transition-colors ${
+                    i === activeSheet
+                      ? 'bg-gray-900 text-white border-t border-x border-gray-600'
+                      : 'text-gray-400 hover:text-gray-200 hover:bg-gray-700'
+                  }`}
+                >
+                  {sheet.name}
+                </button>
+                {showCopy && (
+                  <button
+                    type="button"
+                    onClick={() => copySheetUrls(i)}
+                    title={isCopied ? 'Copied!' : 'Copy all URLs in this sheet'}
+                    className={`px-2 py-1 text-xs rounded border transition-colors ${
+                      isCopied
+                        ? 'bg-green-600 border-green-500 text-white'
+                        : 'bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600 hover:text-white'
+                    }`}
+                  >
+                    {isCopied ? 'Copied' : 'Copy all URLs'}
+                  </button>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
 
