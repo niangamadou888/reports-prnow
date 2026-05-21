@@ -15,8 +15,26 @@ interface SheetData {
   rows: string[][];
 }
 
+const URL_AUTODETECT_MIN_COUNT = 10;
+
 function isUrl(value: string): boolean {
   return /^https?:\/\//i.test(value.trim());
+}
+
+function urlColumnsWithMinCount(sheet: SheetData, min: number): number[] {
+  const cols: number[] = [];
+  const ncols = sheet.headers.length || (sheet.rows[0]?.length ?? 0);
+  for (let c = 0; c < ncols; c++) {
+    let count = 0;
+    for (const row of sheet.rows) {
+      if (isUrl(row[c] || '')) {
+        count++;
+        if (count >= min) break;
+      }
+    }
+    if (count >= min) cols.push(c);
+  }
+  return cols;
 }
 
 export default function ExcelViewer({ slug, originalName, initialSheet }: ExcelViewerProps) {
@@ -25,6 +43,7 @@ export default function ExcelViewer({ slug, originalName, initialSheet }: ExcelV
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [copiedSheet, setCopiedSheet] = useState<number | null>(null);
+  const [copiedColumn, setCopiedColumn] = useState<number | null>(null);
   const [toastVisible, setToastVisible] = useState(false);
 
   useEffect(() => {
@@ -126,6 +145,23 @@ export default function ExcelViewer({ slug, originalName, initialSheet }: ExcelV
     }
   };
 
+  const copyColumnUrls = async (colIdx: number) => {
+    if (!current) return;
+    const urls = current.rows
+      .map((row) => (row[colIdx] || '').trim())
+      .filter((value) => isUrl(value));
+    if (urls.length === 0) return;
+    try {
+      await navigator.clipboard.writeText(urls.join('\n'));
+      setCopiedColumn(colIdx);
+      setToastVisible(true);
+      setTimeout(() => setCopiedColumn((c) => (c === colIdx ? null : c)), 1500);
+      setTimeout(() => setToastVisible(false), 2500);
+    } catch {
+      // Clipboard write may fail in restricted contexts; ignore silently.
+    }
+  };
+
   if (!current || (current.headers.length === 0 && current.rows.length === 0)) {
     return (
       <div className="w-full flex items-center justify-center p-12">
@@ -133,6 +169,8 @@ export default function ExcelViewer({ slug, originalName, initialSheet }: ExcelV
       </div>
     );
   }
+
+  const autoUrlColumns = urlColumnsWithMinCount(current, URL_AUTODETECT_MIN_COUNT);
 
   return (
     <div className="w-full flex flex-col overflow-hidden relative">
@@ -144,11 +182,14 @@ export default function ExcelViewer({ slug, originalName, initialSheet }: ExcelV
       )}
 
       {/* Sheet tabs */}
-      {(sheets.length > 1 || findUrlColumn(current) !== -1) && (
+      {sheets.length > 1 && (
         <div className="flex items-center bg-gray-800 border-b border-gray-700 px-2 pt-2 gap-1 overflow-x-auto">
           {sheets.map((sheet, i) => {
-            const isSingleSheet = sheets.length === 1;
-            const showCopy = (isSingleSheet || i === 0 || i === 2) && findUrlColumn(sheet) !== -1;
+            const autoCols = urlColumnsWithMinCount(sheet, URL_AUTODETECT_MIN_COUNT);
+            const showCopy =
+              (i === 0 || i === 2) &&
+              autoCols.length === 0 &&
+              findUrlColumn(sheet) !== -1;
             const isCopied = copiedSheet === i;
             return (
               <div key={sheet.name} className="flex items-center gap-1">
@@ -204,14 +245,48 @@ export default function ExcelViewer({ slug, originalName, initialSheet }: ExcelV
               <th className="bg-gray-700 text-gray-400 px-3 py-2 text-center border border-gray-600 w-12 font-normal">
                 #
               </th>
-              {current.headers.map((header, i) => (
-                <th
-                  key={i}
-                  className="bg-gray-700 text-gray-200 px-3 py-2 text-left border border-gray-600 font-semibold whitespace-nowrap"
-                >
-                  {header || <span className="text-gray-500 italic">—</span>}
-                </th>
-              ))}
+              {current.headers.map((header, i) => {
+                const isAutoUrlCol = autoUrlColumns.includes(i);
+                const colCopied = copiedColumn === i;
+                return (
+                  <th
+                    key={i}
+                    className="bg-gray-700 text-gray-200 px-3 py-2 text-left border border-gray-600 font-semibold whitespace-nowrap"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span>{header || <span className="text-gray-500 italic">—</span>}</span>
+                      {isAutoUrlCol && (
+                        <button
+                          type="button"
+                          onClick={() => copyColumnUrls(i)}
+                          title={colCopied ? 'Copied!' : 'Copy all URLs in this column'}
+                          className={`inline-flex items-center gap-1.5 px-2 py-0.5 text-xs rounded border transition-colors ${
+                            colCopied
+                              ? 'bg-green-600 border-green-500 text-white'
+                              : 'bg-gray-600 border-gray-500 text-gray-200 hover:bg-gray-500 hover:text-white'
+                          }`}
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className="w-3.5 h-3.5"
+                            aria-hidden="true"
+                          >
+                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                          </svg>
+                          <span>{colCopied ? 'Copied' : 'Copy URLs'}</span>
+                        </button>
+                      )}
+                    </div>
+                  </th>
+                );
+              })}
             </tr>
           </thead>
           <tbody>
