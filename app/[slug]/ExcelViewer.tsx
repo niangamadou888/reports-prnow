@@ -144,10 +144,11 @@ export default function ExcelViewer({ slug, originalName, initialSheet }: ExcelV
       )}
 
       {/* Sheet tabs */}
-      {sheets.length > 1 && (
+      {(sheets.length > 1 || findUrlColumn(current) !== -1) && (
         <div className="flex items-center bg-gray-800 border-b border-gray-700 px-2 pt-2 gap-1 overflow-x-auto">
           {sheets.map((sheet, i) => {
-            const showCopy = (i === 0 || i === 2) && findUrlColumn(sheet) !== -1;
+            const isSingleSheet = sheets.length === 1;
+            const showCopy = (isSingleSheet || i === 0 || i === 2) && findUrlColumn(sheet) !== -1;
             const isCopied = copiedSheet === i;
             return (
               <div key={sheet.name} className="flex items-center gap-1">
