@@ -18,8 +18,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   const fileType = pdf.fileType || 'pdf';
   const title = fileType === 'excel' ? 'PRNow | Excel Report' : 'PRNow | PDF Report';
+  const description =
+    'View your PRNow press release distribution report — every publication where your press release was published, complete with live, verifiable links.';
 
-  return { title };
+  return { title, description };
 }
 
 export default async function PDFPage({ params, searchParams }: PageProps) {
