@@ -32,9 +32,14 @@ export default function PDFViewer({ slug, originalName, fileType, initialSheet }
             target="_blank"
             rel="noopener"
             aria-label="PRNow — press release distribution"
-            className="text-white font-bold tracking-tight hover:text-blue-400 transition-colors flex-shrink-0"
+            className="flex-shrink-0 hover:opacity-80 transition-opacity"
           >
-            PR<span className="text-blue-400">Now</span>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/logo.png"
+              alt="PRNow"
+              className="h-5 sm:h-6 w-auto brightness-0 invert"
+            />
           </a>
           <span className="h-5 w-px bg-gray-600 flex-shrink-0" aria-hidden="true" />
           {isExcel ? (
