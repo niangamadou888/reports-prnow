@@ -8,6 +8,8 @@
 //     gzipped NDJSON backup, so any deletion is recoverable.
 //   • --max guards against a misconfigured window wiping the table.
 //   • Deletes in batches so a large purge never locks the table.
+//   • KEEP_SLUGS are permanent marketing assets (pricing-page sample reports)
+//     and are NEVER deleted regardless of age.
 //
 // A deleted slug degrades gracefully: /{slug} → notFound(), /api/pdfs/{slug} →
 // 404 (verified). Excel reports are regenerable from prnow's dynamic route.
@@ -39,6 +41,21 @@ const BATCH = 200
 const BACKUP_DIR = process.env.REPORTS_CLEANUP_DIR || '/root'
 const BACKUP_TTL_DAYS = 30 // prune our own old backup/audit files past this
 
+// Permanent marketing assets: the prnow pricing page links these slugs as
+// sample reports (lib/plan-info.ts + pricing_config metadata + PlanCard).
+// They must survive every sweep — the 2026-07-23 run deleted 7 of them and
+// broke every "Sample Report" link on the pricing page (restored from the
+// run's backup). Extend via env REPORTS_KEEP_SLUGS=comma,separated,slugs.
+// Additionally, ANY slug starting with "sample-" is permanent: prnow's admin
+// generates replacement sample reports under that prefix (KEEP_PREFIX below).
+const KEEP_SLUGS = [
+  'basic-report', 'basic-report-excel',
+  'standard-report', 'standard-report-excel',
+  'advanced-report', 'advanced-report-excel',
+  'newsfile-report', 'podcast-report', 'standard-extra-report',
+  ...(process.env.REPORTS_KEEP_SLUGS || '').split(',').map((s) => s.trim()).filter(Boolean),
+]
+
 const dbConfig = {
   host: process.env.DB_HOST,
   port: Number(process.env.DB_PORT) || 3306,
@@ -46,7 +63,9 @@ const dbConfig = {
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
 }
-const WHERE = 'uploaded_at < (NOW() - INTERVAL ? DAY)'
+const KEEP_PREFIX = 'sample-'
+const WHERE = "uploaded_at < (NOW() - INTERVAL ? DAY) AND slug NOT IN (?) AND slug NOT LIKE ?"
+const WHERE_PARAMS = [DAYS, KEEP_SLUGS, `${KEEP_PREFIX}%`]
 const mb = (bytes) => (Number(bytes || 0) / 1048576).toFixed(1)
 const stamp = () => new Date().toISOString().replace(/[:.]/g, '-')
 const log = (m) => console.log(`[cleanup] ${m}`)
@@ -59,7 +78,7 @@ function backupDoomed(backupPath) {
     gz.pipe(out)
     const conn = mysqlRaw.createConnection(dbConfig)
     const stream = conn
-      .query(`SELECT slug, original_name, uploaded_at, file_size, file_path, file_type, file_data FROM pdf_records WHERE ${WHERE}`, [DAYS])
+      .query(`SELECT slug, original_name, uploaded_at, file_size, file_path, file_type, file_data FROM pdf_records WHERE ${WHERE}`, WHERE_PARAMS)
       .stream()
     let count = 0
     stream.on('data', (row) => {
@@ -97,15 +116,15 @@ async function main() {
   try {
     const [[agg]] = await conn.query(
       `SELECT COUNT(*) n, COALESCE(SUM(file_size),0) bytes, MIN(uploaded_at) oldest, MAX(uploaded_at) newest FROM pdf_records WHERE ${WHERE}`,
-      [DAYS],
+      WHERE_PARAMS,
     )
-    log(`retention=${DAYS}d  candidates=${agg.n}  ~${mb(agg.bytes)}MB  range=${agg.oldest || '—'} .. ${agg.newest || '—'}`)
+    log(`retention=${DAYS}d  keep=${KEEP_SLUGS.length} pinned slug(s)  candidates=${agg.n}  ~${mb(agg.bytes)}MB  range=${agg.oldest || '—'} .. ${agg.newest || '—'}`)
 
     if (agg.n === 0) { log('nothing to delete.'); return }
 
     if (!APPLY) {
       const [sample] = await conn.query(
-        `SELECT slug, uploaded_at, file_type FROM pdf_records WHERE ${WHERE} ORDER BY uploaded_at LIMIT 15`, [DAYS])
+        `SELECT slug, uploaded_at, file_type FROM pdf_records WHERE ${WHERE} ORDER BY uploaded_at LIMIT 15`, WHERE_PARAMS)
       log('DRY-RUN — no deletions. Oldest sample:')
       for (const r of sample) console.log(`   ${new Date(r.uploaded_at).toISOString()}  ${r.file_type.padEnd(5)}  ${r.slug}`)
       log(`re-run with --apply to back up and delete these ${agg.n} row(s).`)
@@ -130,7 +149,7 @@ async function main() {
 
     let deleted = 0
     for (;;) {
-      const [res] = await conn.query(`DELETE FROM pdf_records WHERE ${WHERE} LIMIT ${BATCH}`, [DAYS])
+      const [res] = await conn.query(`DELETE FROM pdf_records WHERE ${WHERE} LIMIT ${BATCH}`, WHERE_PARAMS)
       deleted += res.affectedRows
       if (res.affectedRows < BATCH) break
     }
@@ -138,6 +157,7 @@ async function main() {
     fs.writeFileSync(auditPath, JSON.stringify({
       ranAt: new Date().toISOString(), retentionDays: DAYS,
       candidates: agg.n, deleted, backup: backupPath,
+      keepSlugs: KEEP_SLUGS,
       range: { oldest: agg.oldest, newest: agg.newest }, approxBytes: Number(agg.bytes),
     }, null, 2))
     log(`DELETED ${deleted} row(s). backup=${backupPath} audit=${auditPath}`)
