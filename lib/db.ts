@@ -31,12 +31,24 @@ export async function ensureSchema(): Promise<void> {
       file_size BIGINT NOT NULL DEFAULT 0,
       file_path VARCHAR(1000) NOT NULL,
       file_type ENUM('pdf', 'excel') NOT NULL DEFAULT 'pdf',
-      file_data LONGBLOB
+      file_data LONGBLOB,
+      meta_title VARCHAR(500) NULL,
+      meta_description VARCHAR(1000) NULL
     )
   `);
   // Add file_data column if table already exists without it
   try {
     await db.execute(`ALTER TABLE pdf_records ADD COLUMN file_data LONGBLOB`);
+  } catch {
+    // Column already exists, ignore
+  }
+  try {
+    await db.execute(`ALTER TABLE pdf_records ADD COLUMN meta_title VARCHAR(500) NULL`);
+  } catch {
+    // Column already exists, ignore
+  }
+  try {
+    await db.execute(`ALTER TABLE pdf_records ADD COLUMN meta_description VARCHAR(1000) NULL`);
   } catch {
     // Column already exists, ignore
   }

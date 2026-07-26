@@ -48,8 +48,12 @@ export function middleware(request: NextRequest) {
   }
 
   // Protect API routes with basic auth (for programmatic access)
-  // Allow GET requests to /api/pdfs/[slug] for public viewing
-  const isViewingFile = pathname.match(/^\/api\/pdfs\/[^/]+$/) && request.method === 'GET';
+  // Allow public file viewing and the small metadata payload consumed by
+  // prnow.io/r/[slug]. Mutating/list routes remain protected.
+  const isViewingFile =
+    request.method === 'GET' &&
+    (pathname.match(/^\/api\/pdfs\/[^/]+$/) ||
+      pathname.match(/^\/api\/pdfs\/[^/]+\/meta$/));
 
   if (isViewingFile) {
     return NextResponse.next();

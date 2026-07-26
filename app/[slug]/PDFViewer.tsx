@@ -5,11 +5,18 @@ import ExcelViewer from './ExcelViewer';
 interface PDFViewerProps {
   slug: string;
   originalName: string;
+  displayTitle: string;
   fileType: 'pdf' | 'excel';
   initialSheet?: string;
 }
 
-export default function PDFViewer({ slug, originalName, fileType, initialSheet }: PDFViewerProps) {
+export default function PDFViewer({
+  slug,
+  originalName,
+  displayTitle,
+  fileType,
+  initialSheet,
+}: PDFViewerProps) {
   const fileUrl = `/api/pdfs/${slug}`;
 
   const handleDownload = () => {
@@ -25,8 +32,8 @@ export default function PDFViewer({ slug, originalName, fileType, initialSheet }
 
   return (
     <div className="min-h-screen bg-gray-900 flex flex-col">
-      <header className="bg-gray-800 px-6 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-4 min-w-0">
+      <header className="flex items-center justify-between gap-3 bg-gray-800 px-3 py-3 sm:px-6">
+        <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-4">
           <a
             href="https://prnow.io"
             target="_blank"
@@ -41,7 +48,7 @@ export default function PDFViewer({ slug, originalName, fileType, initialSheet }
               className="h-5 sm:h-6 w-auto brightness-0 invert"
             />
           </a>
-          <span className="h-5 w-px bg-gray-600 flex-shrink-0" aria-hidden="true" />
+          <span className="hidden h-5 w-px flex-shrink-0 bg-gray-600 sm:block" aria-hidden="true" />
           {isExcel ? (
             <svg className="w-5 h-5 text-green-400 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
               <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zm-1 2l5 5h-5V4zM9.5 11.5l2 3.5-2 3.5h1.5l1.25-2.5L13.5 18.5H15l-2-3.5 2-3.5h-1.5l-1.25 2.5-1.25-2.5H9.5z"/>
@@ -51,15 +58,16 @@ export default function PDFViewer({ slug, originalName, fileType, initialSheet }
               <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zm-1 2l5 5h-5V4zM10 19l-1.5-6h1l1 4 1-4h1L11 19h-1z"/>
             </svg>
           )}
-          <h1 className="text-white font-medium truncate max-w-md">
-            {originalName}
+          <h1 className="min-w-0 truncate text-sm font-medium text-white sm:text-base">
+            {displayTitle}
           </h1>
         </div>
         <button
           onClick={handleDownload}
-          className={`flex items-center gap-2 px-4 py-2 text-white rounded-md transition-colors ${
+          className={`flex min-h-11 flex-shrink-0 cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-gray-800 sm:px-4 ${
             isExcel ? 'bg-green-600 hover:bg-green-700' : 'bg-blue-600 hover:bg-blue-700'
           }`}
+          aria-label={`Download ${displayTitle}`}
         >
           <svg
             className="w-4 h-4"
@@ -74,7 +82,7 @@ export default function PDFViewer({ slug, originalName, fileType, initialSheet }
               d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
             />
           </svg>
-          Download
+          <span className="hidden sm:inline">Download</span>
         </button>
       </header>
 

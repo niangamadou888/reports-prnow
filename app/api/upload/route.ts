@@ -5,6 +5,8 @@ export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
     const file = formData.get('file') as File | null;
+    const rawTitle = formData.get('title');
+    const rawDescription = formData.get('description');
 
     if (!file) {
       return NextResponse.json(
@@ -42,6 +44,11 @@ export async function POST(request: NextRequest) {
       filePath,
       fileType,
       fileData,
+      metaTitle: typeof rawTitle === 'string' ? rawTitle.trim().slice(0, 500) || null : null,
+      metaDescription:
+        typeof rawDescription === 'string'
+          ? rawDescription.trim().replace(/\s+/g, ' ').slice(0, 1000) || null
+          : null,
     });
 
     return NextResponse.json({

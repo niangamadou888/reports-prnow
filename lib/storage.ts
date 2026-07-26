@@ -10,6 +10,8 @@ export interface PDFRecord {
   fileSize: number;
   filePath: string;
   fileType?: FileType;
+  metaTitle?: string | null;
+  metaDescription?: string | null;
 }
 
 const EXCEL_MIME_TYPES = [
@@ -95,8 +97,18 @@ export async function addPDF(record: PDFRecord & { fileData?: Buffer }): Promise
       // ignore – MySQL 8.0+ requires GLOBAL privilege; its default (64 MB) is fine
     }
     await connection.execute(
-      'INSERT INTO pdf_records (slug, original_name, uploaded_at, file_size, file_path, file_type, file_data) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [record.slug, record.originalName, record.uploadedAt, record.fileSize, record.filePath, record.fileType || 'pdf', record.fileData || null]
+      'INSERT INTO pdf_records (slug, original_name, uploaded_at, file_size, file_path, file_type, file_data, meta_title, meta_description) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [
+        record.slug,
+        record.originalName,
+        record.uploadedAt,
+        record.fileSize,
+        record.filePath,
+        record.fileType || 'pdf',
+        record.fileData || null,
+        record.metaTitle || null,
+        record.metaDescription || null,
+      ]
     );
   } finally {
     connection.release();
@@ -107,7 +119,7 @@ export async function getAllPDFs(): Promise<PDFRecord[]> {
   await ensureSchema();
   const db = getPool();
   const [rows] = await db.execute<RowDataPacket[]>(
-    'SELECT slug, original_name, uploaded_at, file_size, file_path, file_type FROM pdf_records ORDER BY uploaded_at DESC'
+    'SELECT slug, original_name, uploaded_at, file_size, file_path, file_type, meta_title, meta_description FROM pdf_records ORDER BY uploaded_at DESC'
   );
   return rows.map(row => ({
     slug: row.slug,
@@ -116,6 +128,8 @@ export async function getAllPDFs(): Promise<PDFRecord[]> {
     fileSize: row.file_size,
     filePath: row.file_path,
     fileType: row.file_type || 'pdf',
+    metaTitle: row.meta_title || null,
+    metaDescription: row.meta_description || null,
   }));
 }
 
@@ -123,7 +137,7 @@ export async function getPDF(slug: string): Promise<PDFRecord | undefined> {
   await ensureSchema();
   const db = getPool();
   const [rows] = await db.execute<RowDataPacket[]>(
-    'SELECT slug, original_name, uploaded_at, file_size, file_path, file_type FROM pdf_records WHERE slug = ? LIMIT 1',
+    'SELECT slug, original_name, uploaded_at, file_size, file_path, file_type, meta_title, meta_description FROM pdf_records WHERE slug = ? LIMIT 1',
     [slug]
   );
   if (rows.length === 0) return undefined;
@@ -135,6 +149,8 @@ export async function getPDF(slug: string): Promise<PDFRecord | undefined> {
     fileSize: row.file_size,
     filePath: row.file_path,
     fileType: row.file_type || 'pdf',
+    metaTitle: row.meta_title || null,
+    metaDescription: row.meta_description || null,
   };
 }
 
