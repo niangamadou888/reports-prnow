@@ -1,5 +1,5 @@
 import { Metadata } from 'next';
-import { notFound } from 'next/navigation';
+import { redirect } from 'next/navigation';
 import { getPDF } from '@/lib/storage';
 import PDFViewer from './PDFViewer';
 
@@ -30,7 +30,7 @@ export default async function PDFPage({ params, searchParams }: PageProps) {
   const pdf = await getPDF(slug);
 
   if (!pdf) {
-    notFound();
+    redirect('https://prnow.io');
   }
 
   return <PDFViewer slug={slug} originalName={pdf.originalName} fileType={pdf.fileType || 'pdf'} initialSheet={sheet} />;
