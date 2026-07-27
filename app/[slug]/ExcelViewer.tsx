@@ -21,6 +21,35 @@ function isUrl(value: string): boolean {
   return /^https?:\/\//i.test(value.trim());
 }
 
+async function writeToClipboard(text: string): Promise<boolean> {
+  if (navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch (err) {
+      console.error('navigator.clipboard.writeText failed, falling back to execCommand', err);
+    }
+  }
+
+  const textarea = document.createElement('textarea');
+  textarea.value = text;
+  textarea.style.position = 'fixed';
+  textarea.style.top = '-9999px';
+  textarea.style.left = '-9999px';
+  document.body.appendChild(textarea);
+  textarea.focus();
+  textarea.select();
+
+  try {
+    return document.execCommand('copy');
+  } catch (err) {
+    console.error('document.execCommand(copy) fallback failed', err);
+    return false;
+  } finally {
+    document.body.removeChild(textarea);
+  }
+}
+
 function urlColumnsWithMinCount(sheet: SheetData, min: number): number[] {
   const cols: number[] = [];
   const ncols = sheet.headers.length || (sheet.rows[0]?.length ?? 0);
@@ -45,6 +74,7 @@ export default function ExcelViewer({ slug, originalName, initialSheet }: ExcelV
   const [copiedSheet, setCopiedSheet] = useState<number | null>(null);
   const [copiedColumn, setCopiedColumn] = useState<number | null>(null);
   const [toastVisible, setToastVisible] = useState(false);
+  const [copyError, setCopyError] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadExcel() {
@@ -134,15 +164,16 @@ export default function ExcelViewer({ slug, originalName, initialSheet }: ExcelV
       .map((row) => (row[colIdx] || '').trim())
       .filter((value) => isUrl(value));
     if (urls.length === 0) return;
-    try {
-      await navigator.clipboard.writeText(urls.join('\n'));
-      setCopiedSheet(sheetIdx);
-      setToastVisible(true);
-      setTimeout(() => setCopiedSheet((s) => (s === sheetIdx ? null : s)), 1500);
-      setTimeout(() => setToastVisible(false), 2500);
-    } catch {
-      // Clipboard write may fail in restricted contexts; ignore silently.
+    const copied = await writeToClipboard(urls.join('\n'));
+    if (!copied) {
+      setCopyError('Copy failed — select and copy the URLs manually.');
+      setTimeout(() => setCopyError(null), 3000);
+      return;
     }
+    setCopiedSheet(sheetIdx);
+    setToastVisible(true);
+    setTimeout(() => setCopiedSheet((s) => (s === sheetIdx ? null : s)), 1500);
+    setTimeout(() => setToastVisible(false), 2500);
   };
 
   const copyColumnUrls = async (colIdx: number) => {
@@ -151,15 +182,16 @@ export default function ExcelViewer({ slug, originalName, initialSheet }: ExcelV
       .map((row) => (row[colIdx] || '').trim())
       .filter((value) => isUrl(value));
     if (urls.length === 0) return;
-    try {
-      await navigator.clipboard.writeText(urls.join('\n'));
-      setCopiedColumn(colIdx);
-      setToastVisible(true);
-      setTimeout(() => setCopiedColumn((c) => (c === colIdx ? null : c)), 1500);
-      setTimeout(() => setToastVisible(false), 2500);
-    } catch {
-      // Clipboard write may fail in restricted contexts; ignore silently.
+    const copied = await writeToClipboard(urls.join('\n'));
+    if (!copied) {
+      setCopyError('Copy failed — select and copy the URLs manually.');
+      setTimeout(() => setCopyError(null), 3000);
+      return;
     }
+    setCopiedColumn(colIdx);
+    setToastVisible(true);
+    setTimeout(() => setCopiedColumn((c) => (c === colIdx ? null : c)), 1500);
+    setTimeout(() => setToastVisible(false), 2500);
   };
 
   if (!current || (current.headers.length === 0 && current.rows.length === 0)) {
@@ -178,6 +210,11 @@ export default function ExcelViewer({ slug, originalName, initialSheet }: ExcelV
       {toastVisible && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-md bg-green-600 text-white text-sm shadow-lg animate-fade-in">
           All URLs have been copied!
+        </div>
+      )}
+      {copyError && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-md bg-red-600 text-white text-sm shadow-lg animate-fade-in">
+          {copyError}
         </div>
       )}
 
