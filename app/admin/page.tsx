@@ -93,7 +93,7 @@ export default function AdminPage() {
         throw new Error(data.error || 'Upload failed');
       }
 
-      setUploadedUrl(`${window.location.origin}${data.url}${data.fileType === 'excel' ? '?sheet=Sheet3' : ''}`);
+      setUploadedUrl(`${window.location.origin}${data.url}`);
       fetchPdfs();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Upload failed');
@@ -151,9 +151,8 @@ export default function AdminPage() {
     }
   };
 
-  const copyLink = (slug: string, fileType?: string) => {
-    const suffix = fileType === 'excel' ? '?sheet=Sheet3' : '';
-    navigator.clipboard.writeText(`${window.location.origin}/${slug}${suffix}`);
+  const copyLink = (slug: string) => {
+    navigator.clipboard.writeText(`${window.location.origin}/${slug}`);
   };
 
   const copyToClipboard = () => {
@@ -361,13 +360,13 @@ export default function AdminPage() {
                         <td className="px-6 py-4">
                           <div className="flex justify-end gap-2">
                             <button
-                              onClick={() => copyLink(pdf.slug, pdf.fileType)}
+                              onClick={() => copyLink(pdf.slug)}
                               className="px-3 py-1 text-sm text-gray-600 hover:text-gray-900 border border-gray-300 rounded hover:bg-gray-50 transition-colors"
                             >
                               Copy Link
                             </button>
                             <a
-                              href={`/${pdf.slug}${pdf.fileType === 'excel' ? '?sheet=Sheet3' : ''}`}
+                              href={`/${pdf.slug}`}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="px-3 py-1 text-sm text-blue-600 hover:text-blue-700 border border-blue-300 rounded hover:bg-blue-50 transition-colors"

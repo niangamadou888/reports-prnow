@@ -10,11 +10,26 @@ function cleanText(value: string | null | undefined, maxLength: number): string 
     .slice(0, maxLength);
 }
 
-function filenameTitle(originalName: string): string {
-  return cleanText(
-    originalName.replace(/\.(pdf|xlsx|xls)$/i, '').replace(/[-_]+/g, ' '),
-    TITLE_MAX_LENGTH,
-  );
+export function filenameTitle(originalName: string): string {
+  let stem = originalName
+    .replace(/\.(pdf|xlsx|xls)$/i, '')
+    .replace(/_+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  // Package reports append " - Basic S0MTFA4" (or another package label).
+  const packageSeparator = stem.lastIndexOf(' - ');
+  if (
+    packageSeparator > 0 &&
+    /\s[A-Z0-9]{6,12}$/i.test(stem.slice(packageSeparator + 3))
+  ) {
+    stem = stem.slice(0, packageSeparator).trim();
+  } else {
+    // Unified reports append only the release identifier.
+    stem = stem.replace(/\s+[A-Z0-9]{6,12}$/i, '').trim();
+  }
+
+  return cleanText(stem, TITLE_MAX_LENGTH);
 }
 
 export interface ResolvedReportMetadata {
