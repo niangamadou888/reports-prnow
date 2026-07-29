@@ -5,7 +5,6 @@ import * as XLSX from 'xlsx';
 
 interface ExcelViewerProps {
   slug: string;
-  originalName: string;
   initialSheet?: string;
 }
 
@@ -66,14 +65,16 @@ function urlColumnsWithMinCount(sheet: SheetData, min: number): number[] {
   return cols;
 }
 
-export default function ExcelViewer({ slug, originalName, initialSheet }: ExcelViewerProps) {
+export default function ExcelViewer({ slug, initialSheet }: ExcelViewerProps) {
   const [sheets, setSheets] = useState<SheetData[]>([]);
   const [activeSheet, setActiveSheet] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [copiedSheet, setCopiedSheet] = useState<number | null>(null);
   const [copiedColumn, setCopiedColumn] = useState<number | null>(null);
+  const [copiedCell, setCopiedCell] = useState<string | null>(null);
   const [toastVisible, setToastVisible] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
   const [copyError, setCopyError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -171,6 +172,7 @@ export default function ExcelViewer({ slug, originalName, initialSheet }: ExcelV
       return;
     }
     setCopiedSheet(sheetIdx);
+    setToastMessage('All URLs have been copied!');
     setToastVisible(true);
     setTimeout(() => setCopiedSheet((s) => (s === sheetIdx ? null : s)), 1500);
     setTimeout(() => setToastVisible(false), 2500);
@@ -189,8 +191,25 @@ export default function ExcelViewer({ slug, originalName, initialSheet }: ExcelV
       return;
     }
     setCopiedColumn(colIdx);
+    setToastMessage('All URLs have been copied!');
     setToastVisible(true);
     setTimeout(() => setCopiedColumn((c) => (c === colIdx ? null : c)), 1500);
+    setTimeout(() => setToastVisible(false), 2500);
+  };
+
+  const copyCellUrl = async (rowIdx: number, colIdx: number, value: string) => {
+    const copied = await writeToClipboard(value);
+    if (!copied) {
+      setCopyError('Copy failed — open the link and copy it from your browser.');
+      setTimeout(() => setCopyError(null), 3000);
+      return;
+    }
+
+    const cellKey = `${rowIdx}:${colIdx}`;
+    setCopiedCell(cellKey);
+    setToastMessage('URL copied!');
+    setToastVisible(true);
+    setTimeout(() => setCopiedCell((key) => (key === cellKey ? null : key)), 1500);
     setTimeout(() => setToastVisible(false), 2500);
   };
 
@@ -208,12 +227,12 @@ export default function ExcelViewer({ slug, originalName, initialSheet }: ExcelV
     <div className="w-full flex flex-col overflow-hidden relative">
       {/* Toast */}
       {toastVisible && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-md bg-green-600 text-white text-sm shadow-lg animate-fade-in">
-          All URLs have been copied!
+        <div role="status" aria-live="polite" className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-md bg-green-600 text-white text-sm shadow-lg animate-fade-in">
+          {toastMessage}
         </div>
       )}
       {copyError && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-md bg-red-600 text-white text-sm shadow-lg animate-fade-in">
+        <div role="alert" className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-md bg-red-600 text-white text-sm shadow-lg animate-fade-in">
           {copyError}
         </div>
       )}
@@ -332,15 +351,63 @@ export default function ExcelViewer({ slug, originalName, initialSheet }: ExcelV
                 <td className="bg-gray-800 text-gray-500 px-3 py-1.5 text-center border border-gray-700 text-xs">
                   {rowIdx + 1}
                 </td>
-                {current.headers.map((_, colIdx) => (
-                  <td
-                    key={colIdx}
-                    className="text-gray-300 px-3 py-1.5 border border-gray-700 whitespace-nowrap max-w-xs truncate"
-                    title={row[colIdx] || ''}
-                  >
-                    {row[colIdx] || ''}
-                  </td>
-                ))}
+                {current.headers.map((_, colIdx) => {
+                  const value = row[colIdx] || '';
+                  const urlCell = isUrl(value);
+                  const cellKey = `${rowIdx}:${colIdx}`;
+                  const cellCopied = copiedCell === cellKey;
+
+                  return (
+                    <td
+                      key={colIdx}
+                      className={`border border-gray-700 px-3 py-1.5 text-gray-300 ${
+                        urlCell ? 'whitespace-nowrap' : 'max-w-xs truncate whitespace-nowrap'
+                      }`}
+                      title={urlCell ? undefined : value}
+                    >
+                      {urlCell ? (
+                        <div className="flex items-center gap-2" aria-label={`Actions for link in row ${rowIdx + 1}`}>
+                          <a
+                            href={value}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex min-h-9 cursor-pointer items-center gap-1.5 rounded-md border border-blue-500/60 bg-blue-600/15 px-3 py-1.5 text-xs font-medium text-blue-300 transition-colors hover:bg-blue-600 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
+                            aria-label={`View link in row ${rowIdx + 1}`}
+                          >
+                            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5h5v5m0-5L10 14M5 8v11h11v-5" />
+                            </svg>
+                            View
+                          </a>
+                          <button
+                            type="button"
+                            onClick={() => copyCellUrl(rowIdx, colIdx, value)}
+                            className={`inline-flex min-h-9 cursor-pointer items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-400 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900 ${
+                              cellCopied
+                                ? 'border-green-500 bg-green-600 text-white'
+                                : 'border-gray-600 bg-gray-800 text-gray-200 hover:bg-gray-700 hover:text-white'
+                            }`}
+                            aria-label={`${cellCopied ? 'Copied' : 'Copy'} link in row ${rowIdx + 1}`}
+                          >
+                            {cellCopied ? (
+                              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                              </svg>
+                            ) : (
+                              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                <rect x="9" y="9" width="11" height="11" rx="2" strokeWidth={2} />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 9V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7a2 2 0 002 2h3" />
+                              </svg>
+                            )}
+                            {cellCopied ? 'Copied' : 'Copy'}
+                          </button>
+                        </div>
+                      ) : (
+                        value
+                      )}
+                    </td>
+                  );
+                })}
               </tr>
             ))}
           </tbody>
