@@ -363,15 +363,18 @@ export default function ExcelViewer({ slug, initialSheet }: ExcelViewerProps) {
                       className={`border border-gray-700 px-3 py-1.5 text-gray-300 ${
                         urlCell ? 'whitespace-nowrap' : 'max-w-xs truncate whitespace-nowrap'
                       }`}
-                      title={urlCell ? undefined : value}
+                      title={value}
                     >
                       {urlCell ? (
                         <div className="flex items-center gap-2" aria-label={`Actions for link in row ${rowIdx + 1}`}>
+                          {/* The URL itself stays visible — it is an Excel sheet,
+                              the buttons are companions, not a replacement. */}
+                          <span className="max-w-md truncate text-gray-300">{value}</span>
                           <a
                             href={value}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex min-h-9 cursor-pointer items-center gap-1.5 rounded-md border border-blue-500/60 bg-blue-600/15 px-3 py-1.5 text-xs font-medium text-blue-300 transition-colors hover:bg-blue-600 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
+                            className="inline-flex min-h-9 shrink-0 cursor-pointer items-center gap-1.5 rounded-md border border-blue-500/60 bg-blue-600/15 px-3 py-1.5 text-xs font-medium text-blue-300 transition-colors hover:bg-blue-600 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
                             aria-label={`View link in row ${rowIdx + 1}`}
                           >
                             <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
@@ -382,7 +385,7 @@ export default function ExcelViewer({ slug, initialSheet }: ExcelViewerProps) {
                           <button
                             type="button"
                             onClick={() => copyCellUrl(rowIdx, colIdx, value)}
-                            className={`inline-flex min-h-9 cursor-pointer items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-400 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900 ${
+                            className={`inline-flex min-h-9 shrink-0 cursor-pointer items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-400 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900 ${
                               cellCopied
                                 ? 'border-green-500 bg-green-600 text-white'
                                 : 'border-gray-600 bg-gray-800 text-gray-200 hover:bg-gray-700 hover:text-white'
