@@ -366,44 +366,54 @@ export default function ExcelViewer({ slug, initialSheet }: ExcelViewerProps) {
                       title={value}
                     >
                       {urlCell ? (
-                        <div className="flex items-center gap-2" aria-label={`Actions for link in row ${rowIdx + 1}`}>
+                        <div className="flex w-full items-center justify-between gap-3">
                           {/* The URL itself stays visible — it is an Excel sheet,
-                              the buttons are companions, not a replacement. */}
-                          <span className="max-w-md truncate text-gray-300">{value}</span>
-                          <a
-                            href={value}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex min-h-9 shrink-0 cursor-pointer items-center gap-1.5 rounded-md border border-blue-500/60 bg-blue-600/15 px-3 py-1.5 text-xs font-medium text-blue-300 transition-colors hover:bg-blue-600 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
-                            aria-label={`View link in row ${rowIdx + 1}`}
+                              the buttons are companions, not a replacement. It
+                              takes the slack in the cell so the actions can sit
+                              at one fixed x down the whole column: sized to its
+                              own text, every short URL used to drag View/Copy
+                              left, leaving a ragged edge nobody could aim at. */}
+                          <span className="min-w-0 max-w-md flex-1 truncate text-gray-300">{value}</span>
+                          <span
+                            className="flex shrink-0 items-center gap-2"
+                            role="group"
+                            aria-label={`Actions for link in row ${rowIdx + 1}`}
                           >
-                            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5h5v5m0-5L10 14M5 8v11h11v-5" />
-                            </svg>
-                            View
-                          </a>
-                          <button
-                            type="button"
-                            onClick={() => copyCellUrl(rowIdx, colIdx, value)}
-                            className={`inline-flex min-h-9 shrink-0 cursor-pointer items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-400 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900 ${
-                              cellCopied
-                                ? 'border-green-500 bg-green-600 text-white'
-                                : 'border-gray-600 bg-gray-800 text-gray-200 hover:bg-gray-700 hover:text-white'
-                            }`}
-                            aria-label={`${cellCopied ? 'Copied' : 'Copy'} link in row ${rowIdx + 1}`}
-                          >
-                            {cellCopied ? (
+                            <a
+                              href={value}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex min-h-9 shrink-0 cursor-pointer items-center gap-1.5 rounded-md border border-blue-500/60 bg-blue-600/15 px-3 py-1.5 text-xs font-medium text-blue-300 transition-colors hover:bg-blue-600 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
+                              aria-label={`View link in row ${rowIdx + 1}`}
+                            >
                               <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5h5v5m0-5L10 14M5 8v11h11v-5" />
                               </svg>
-                            ) : (
-                              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                                <rect x="9" y="9" width="11" height="11" rx="2" strokeWidth={2} />
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 9V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7a2 2 0 002 2h3" />
-                              </svg>
-                            )}
-                            {cellCopied ? 'Copied' : 'Copy'}
-                          </button>
+                              View
+                            </a>
+                            <button
+                              type="button"
+                              onClick={() => copyCellUrl(rowIdx, colIdx, value)}
+                              className={`inline-flex min-h-9 shrink-0 cursor-pointer items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-400 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900 ${
+                                cellCopied
+                                  ? 'border-green-500 bg-green-600 text-white'
+                                  : 'border-gray-600 bg-gray-800 text-gray-200 hover:bg-gray-700 hover:text-white'
+                              }`}
+                              aria-label={`${cellCopied ? 'Copied' : 'Copy'} link in row ${rowIdx + 1}`}
+                            >
+                              {cellCopied ? (
+                                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                </svg>
+                              ) : (
+                                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                  <rect x="9" y="9" width="11" height="11" rx="2" strokeWidth={2} />
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 9V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7a2 2 0 002 2h3" />
+                                </svg>
+                              )}
+                              {cellCopied ? 'Copied' : 'Copy'}
+                            </button>
+                          </span>
                         </div>
                       ) : (
                         value
