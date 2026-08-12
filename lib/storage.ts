@@ -1,5 +1,5 @@
 import { getPool, ensureSchema } from './db';
-import { RowDataPacket } from 'mysql2';
+import { RowDataPacket, ResultSetHeader } from 'mysql2';
 
 export type FileType = 'pdf' | 'excel';
 
@@ -110,6 +110,62 @@ export async function addPDF(record: PDFRecord & { fileData?: Buffer }): Promise
         record.metaDescription || null,
       ]
     );
+  } finally {
+    connection.release();
+  }
+}
+
+/**
+ * Slugs an uploader may claim BY NAME, replacing whatever is stored there.
+ *
+ * PRNow's pricing-page samples are regenerated whenever the house report
+ * settings or their placement links change; without a claimable slug every
+ * rebuild lands on `…-2`, `…-3` (see generateUniqueSlug), orphaning the previous
+ * workbook and churning a URL that is printed on the pricing page. The pattern
+ * is deliberately narrow — a sample name and nothing else — so an authenticated
+ * uploader can never overwrite a customer's report by guessing its slug.
+ */
+const CLAIMABLE_SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*-sample-report$/;
+
+export function isClaimableSlug(slug: string): boolean {
+  return CLAIMABLE_SLUG.test(slug);
+}
+
+/**
+ * Replace the file stored at `slug`, keeping the row (and therefore the public
+ * URL) exactly where it is. Returns false when no such row exists, so the caller
+ * can fall back to a normal insert.
+ */
+export async function replacePDFBySlug(
+  record: PDFRecord & { fileData?: Buffer }
+): Promise<boolean> {
+  await ensureSchema();
+  const db = getPool();
+  const connection = await db.getConnection();
+  try {
+    try {
+      await connection.execute('SET SESSION max_allowed_packet = 67108864'); // 64 MB
+    } catch {
+      // ignore – MySQL 8.0+ requires GLOBAL privilege; its default (64 MB) is fine
+    }
+    const [result] = await connection.execute<ResultSetHeader>(
+      `UPDATE pdf_records
+          SET original_name = ?, uploaded_at = ?, file_size = ?, file_path = ?,
+              file_type = ?, file_data = ?, meta_title = ?, meta_description = ?
+        WHERE slug = ?`,
+      [
+        record.originalName,
+        record.uploadedAt,
+        record.fileSize,
+        record.filePath,
+        record.fileType || 'pdf',
+        record.fileData || null,
+        record.metaTitle || null,
+        record.metaDescription || null,
+        record.slug,
+      ]
+    );
+    return result.affectedRows > 0;
   } finally {
     connection.release();
   }

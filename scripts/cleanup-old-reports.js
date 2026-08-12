@@ -64,8 +64,15 @@ const dbConfig = {
   database: process.env.DB_NAME,
 }
 const KEEP_PREFIX = 'sample-'
-const WHERE = "uploaded_at < (NOW() - INTERVAL ? DAY) AND slug NOT IN (?) AND slug NOT LIKE ?"
-const WHERE_PARAMS = [DAYS, KEEP_SLUGS, `${KEEP_PREFIX}%`]
+// prnow now names a sample `{plan}-sample-report` so the workbook slug MIRRORS
+// the web report's (…/web/{plan}-sample-report). That name does not start with
+// "sample-", so without this suffix rule the sweep would delete every current
+// pricing-page sample the moment it turned 90 days old — the exact 2026-07-25
+// outage, reintroduced.
+const KEEP_SUFFIX = '-sample-report'
+const WHERE =
+  'uploaded_at < (NOW() - INTERVAL ? DAY) AND slug NOT IN (?) AND slug NOT LIKE ? AND slug NOT LIKE ?'
+const WHERE_PARAMS = [DAYS, KEEP_SLUGS, `${KEEP_PREFIX}%`, `%${KEEP_SUFFIX}`]
 const mb = (bytes) => (Number(bytes || 0) / 1048576).toFixed(1)
 const stamp = () => new Date().toISOString().replace(/[:.]/g, '-')
 const log = (m) => console.log(`[cleanup] ${m}`)
