@@ -157,12 +157,22 @@ export async function getPDF(slug: string): Promise<PDFRecord | undefined> {
 export async function getFileData(slug: string): Promise<Buffer | null> {
   await ensureSchema();
   const db = getPool();
-  const [rows] = await db.execute<RowDataPacket[]>(
-    'SELECT file_data FROM pdf_records WHERE slug = ? LIMIT 1',
-    [slug]
-  );
-  if (rows.length === 0 || !rows[0].file_data) return null;
-  return rows[0].file_data as Buffer;
+  const connection = await db.getConnection();
+  try {
+    try {
+      await connection.execute('SET SESSION max_allowed_packet = 67108864'); // 64 MB
+    } catch {
+      // ignore – MySQL 8.0+ requires GLOBAL privilege; its default (64 MB) is fine
+    }
+    const [rows] = await connection.execute<RowDataPacket[]>(
+      'SELECT file_data FROM pdf_records WHERE slug = ? LIMIT 1',
+      [slug]
+    );
+    if (rows.length === 0 || !rows[0].file_data) return null;
+    return rows[0].file_data as Buffer;
+  } finally {
+    connection.release();
+  }
 }
 
 export async function deletePDF(slug: string): Promise<boolean> {

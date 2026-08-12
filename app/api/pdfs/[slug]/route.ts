@@ -34,10 +34,12 @@ export async function GET(
 
     const contentType = getContentType(pdf.filePath);
 
+    const asciiFilename = pdf.originalName.replace(/[^\x20-\x7E]/g, '_');
+    const encodedFilename = encodeURIComponent(pdf.originalName);
     return new NextResponse(new Uint8Array(fileBuffer), {
       headers: {
         'Content-Type': contentType,
-        'Content-Disposition': `inline; filename="${pdf.originalName}"`,
+        'Content-Disposition': `inline; filename="${asciiFilename}"; filename*=UTF-8''${encodedFilename}`,
       },
     });
   } catch (error) {

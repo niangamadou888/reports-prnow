@@ -33,6 +33,7 @@ export default function AdminPage() {
   const [pdfs, setPdfs] = useState<PDFRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [copiedSlug, setCopiedSlug] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadedUrl, setUploadedUrl] = useState<string | null>(null);
@@ -153,6 +154,8 @@ export default function AdminPage() {
 
   const copyLink = (slug: string) => {
     navigator.clipboard.writeText(`${window.location.origin}/${slug}`);
+    setCopiedSlug(slug);
+    setTimeout(() => setCopiedSlug(null), 2000);
   };
 
   const copyToClipboard = () => {
@@ -164,7 +167,7 @@ export default function AdminPage() {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <header className="bg-white border-b border-gray-200 px-6 py-4">
-        <div className="max-w-6xl mx-auto flex items-center justify-between">
+        <div className="flex items-center justify-between">
           <h1 className="text-xl font-semibold text-gray-900">PR Now Reports - Admin</h1>
           <button
             onClick={handleLogout}
@@ -176,7 +179,7 @@ export default function AdminPage() {
       </header>
 
       <main className="flex-1 p-6">
-        <div className="max-w-6xl mx-auto space-y-6">
+        <div className="space-y-6">
           {/* Upload Section */}
           <div className="bg-white rounded-lg border border-gray-200 p-6">
             <h2 className="text-lg font-medium text-gray-900 mb-4">Upload Report</h2>
@@ -292,8 +295,15 @@ export default function AdminPage() {
                 <p className="text-gray-500">No reports uploaded yet</p>
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full">
+              <table className="w-full table-fixed">
+                  <colgroup>
+                    <col className="w-[30%]" />
+                    <col className="w-[8%]" />
+                    <col className="w-[25%]" />
+                    <col className="w-[8%]" />
+                    <col className="w-[17%]" />
+                    <col className="w-[12%]" />
+                  </colgroup>
                   <thead className="bg-gray-50 border-b border-gray-200">
                     <tr>
                       <th className="text-left px-6 py-3 text-sm font-medium text-gray-500">
@@ -319,8 +329,8 @@ export default function AdminPage() {
                   <tbody className="divide-y divide-gray-200">
                     {pdfs.map((pdf) => (
                       <tr key={pdf.slug} className="hover:bg-gray-50">
-                        <td className="px-6 py-4">
-                          <span className="text-sm text-gray-900 truncate block max-w-xs">
+                        <td className="px-6 py-4 overflow-hidden">
+                          <span className="text-sm text-gray-900 truncate block" title={pdf.originalName}>
                             {pdf.originalName}
                           </span>
                         </td>
@@ -342,8 +352,8 @@ export default function AdminPage() {
                             {pdf.fileType === 'excel' ? 'Excel' : 'PDF'}
                           </span>
                         </td>
-                        <td className="px-6 py-4">
-                          <code className="text-sm bg-gray-100 px-2 py-1 rounded text-black">
+                        <td className="px-6 py-4 overflow-hidden">
+                          <code className="text-sm bg-gray-100 px-2 py-1 rounded text-black truncate block" title={pdf.slug}>
                             {pdf.slug}
                           </code>
                         </td>
@@ -358,25 +368,29 @@ export default function AdminPage() {
                           </span>
                         </td>
                         <td className="px-6 py-4">
-                          <div className="flex justify-end gap-2">
+                          <div className="flex justify-end gap-1">
                             <button
                               onClick={() => copyLink(pdf.slug)}
-                              className="px-3 py-1 text-sm text-gray-600 hover:text-gray-900 border border-gray-300 rounded hover:bg-gray-50 transition-colors"
+                              className={`px-2 py-1 text-xs border rounded transition-colors whitespace-nowrap ${
+                                copiedSlug === pdf.slug
+                                  ? 'bg-green-50 text-green-700 border-green-400'
+                                  : 'text-gray-600 hover:text-gray-900 border-gray-300 hover:bg-gray-50'
+                              }`}
                             >
-                              Copy Link
+                              {copiedSlug === pdf.slug ? '✓ Copied!' : 'Copy Link'}
                             </button>
                             <a
                               href={`/${pdf.slug}`}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="px-3 py-1 text-sm text-blue-600 hover:text-blue-700 border border-blue-300 rounded hover:bg-blue-50 transition-colors"
+                              className="px-2 py-1 text-xs text-blue-600 hover:text-blue-700 border border-blue-300 rounded hover:bg-blue-50 transition-colors whitespace-nowrap"
                             >
                               View
                             </a>
                             <button
                               onClick={() => handleDelete(pdf.slug)}
                               disabled={deleting === pdf.slug}
-                              className="px-3 py-1 text-sm text-red-600 hover:text-red-700 border border-red-300 rounded hover:bg-red-50 transition-colors disabled:opacity-50"
+                              className="px-2 py-1 text-xs text-red-600 hover:text-red-700 border border-red-300 rounded hover:bg-red-50 transition-colors disabled:opacity-50 whitespace-nowrap"
                             >
                               {deleting === pdf.slug ? 'Deleting...' : 'Delete'}
                             </button>
@@ -386,7 +400,6 @@ export default function AdminPage() {
                     ))}
                   </tbody>
                 </table>
-              </div>
             )}
           </div>
         </div>
